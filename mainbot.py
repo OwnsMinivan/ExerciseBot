@@ -110,7 +110,7 @@ def try_ex(func):
     except KeyError:
         return None
 
-def generate_checkin_log(exercise, checkin_date, mood):
+def generate_checkin_log(exercise, checkin_date, mood, user_id):
     """
     Put the info into a DynamoDB
     """
@@ -118,7 +118,8 @@ def generate_checkin_log(exercise, checkin_date, mood):
         Item={
             'checkin_date': checkin_date,
             'Exercise': exercise,
-            'Mood': mood
+            'Mood': mood,
+            'UserId': user_id
         }
     )
     return response
@@ -163,6 +164,7 @@ def workout_CheckIn(intent_request):
     exercise = try_ex(lambda: intent_request['currentIntent']['slots']['WorkoutType'])
     checkin_date = try_ex(lambda: intent_request['currentIntent']['slots']['Date'])
     mood = try_ex(lambda: intent_request['currentIntent']['slots']['Mood'])
+    user_id = try_ex(lambda: intent_request['userId'])
 
     if intent_request['sessionAttributes']:
         session_attributes = intent_request['sessionAttributes']
@@ -174,7 +176,8 @@ def workout_CheckIn(intent_request):
         'RequestType': 'Workout Checkin',
         'Exercise': exercise,
         'Mood': mood,
-        'CheckInDate': checkin_date
+        'CheckInDate': checkin_date,
+        'UserId': user_id
     })
     logger.debug('workout_CheckIn overview={}'.format(overview))
     logger.debug('workout_CheckIn session_attributes={}'.format(session_attributes))
@@ -198,9 +201,9 @@ def workout_CheckIn(intent_request):
 
         # Otherwise, let native DM rules determine how to elicit for slots and prompt for confirmation.  Pass price
         # back in sessionAttributes once it can be calculated; otherwise clear any setting from sessionAttributes.
-        if exercise and checkin_date and mood:
-            # The price of the hotel has yet to be confirmed.
-            entry_result = generate_checkin_log(exercise, checkin_date, mood)
+        if exercise and checkin_date and mood and user_id:
+            # Save all data into the DynamoDB
+            entry_result = generate_checkin_log(exercise, checkin_date, mood, user_id)
             session_attributes['currentCheckinStatus'] = entry_result['ResponseMetadata']['HTTPStatusCode']
         else:
             try_ex(lambda: session_attributes.pop('currentCheckinStatus'))
@@ -239,6 +242,7 @@ def dispatch(intent_request):
     # Dispatch to your bot's intent handlers
     if intent_name == 'WorkoutCheckIn':
         return workout_CheckIn(intent_request)
+    ##this needs to be modified to remove the example of BookCar
     elif intent_name == 'BookCar':
         return book_car(intent_request)
 
