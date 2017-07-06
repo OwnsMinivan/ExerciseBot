@@ -8,8 +8,9 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('Workout_Checkin_DB')
+table = dynamodb.Table('Workout_Checkin_DDB')
 
+users_table = dynamodb.Table('Workout_Users')
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -124,10 +125,39 @@ def generate_checkin_log(exercise, checkin_date, mood, user_id):
     )
     return response
 
+def validate_user_id(user_id):
+    """
+    check User DB to see if current user_id is already listed.  If not, prompt user to fill it out.
+    """
+    response = users_table.query(
+        KeyConditionExpression=Key('UserId').eq(user_id)
+    )
+
+    for i in response['Items']:
+        try:
+            name = i['Name']
+            return name
+        except ValueError:
+            return False
+
+def gather_user_id(user_id):
+    """
+    User ID wasn't in the user DB, better get some info so we can enter it in.
+    """
+    validate_user_result = validate_user_id(user_id)
+    if validate_user_result is False:
+        return build_validation_result(
+            False,
+            'UserId',
+            "I am sorry but I don't see your name in my directory.  Would you mind telling me your First and last name followed by your email address?"
+        )
+
 def validate_workout(slots):
     exercise = try_ex(lambda: slots['WorkoutType'])
     checkin_date = try_ex(lambda: slots['Date'])
     mood = try_ex(lambda: slots['Mood'])
+    user_id = try_ex(lambda: slots['Name'])
+    email = try_ex(lambda: slots['EmailAddress'])
 
     if exercise and not isvalid_workout(exercise):
         return build_validation_result(
@@ -146,12 +176,17 @@ def validate_workout(slots):
     if mood and not isvalid_mood(mood):
         return build_validation_result(False, 'Mood', 'I did not recognize how that workout went for you.  Was it easy, hard or the worst?')
 
+    if user_id == 'Unknown':
+        return build_validation_result(False, 'Name', "I don't think I've talked to you before, can I get your first and last name please?")
+
+        return build_validation_result(False, 'EmailAddress', 'Can I also get your email address?')
+
     return {'isValid': True}
 
 
 """ --- Functions that control the bot's behavior --- """
 
-def workout_CheckIn(intent_request):
+def workout_CheckIn(intent_request, userName):
     """
     Performs dialog management and fulfillment for booking a hotel.
 
@@ -164,7 +199,7 @@ def workout_CheckIn(intent_request):
     exercise = try_ex(lambda: intent_request['currentIntent']['slots']['WorkoutType'])
     checkin_date = try_ex(lambda: intent_request['currentIntent']['slots']['Date'])
     mood = try_ex(lambda: intent_request['currentIntent']['slots']['Mood'])
-    user_id = try_ex(lambda: intent_request['userId'])
+    user_id = try_ex(lambda: userName)
 
     if intent_request['sessionAttributes']:
         session_attributes = intent_request['sessionAttributes']
@@ -234,14 +269,20 @@ def dispatch(intent_request):
     """
     Called when the user specifies an intent for this bot.
     """
-
+    userName = ''
     logger.debug('dispatch userId={}, intentName={}'.format(intent_request['userId'], intent_request['currentIntent']['name']))
 
     intent_name = intent_request['currentIntent']['name']
 
+    user_id_validation_result = validate_user_id(intent_request['userId'])
+    if user_id_validation_result is False:
+        userName = 'Unknown'
+    else:
+        userName = user_id_validation_result
+
     # Dispatch to your bot's intent handlers
     if intent_name == 'WorkoutCheckIn':
-        return workout_CheckIn(intent_request)
+        return workout_CheckIn(intent_request, userName)
     ##this needs to be modified to remove the example of BookCar
     elif intent_name == 'BookCar':
         return book_car(intent_request)
