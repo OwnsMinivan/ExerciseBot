@@ -262,6 +262,80 @@ def workout_CheckIn(intent_request, userName):
         }
     )
 
+
+def user_Register(intent_request, userName):
+    """
+    Performs dialog management and fulfillment for booking a hotel.
+
+    Beyond fulfillment, the implementation for this intent demonstrates the following:
+    1) Use of elicitSlot in slot validation and re-prompting
+    2) Use of sessionAttributes to pass information that can be used to guide conversation
+    """
+
+    logger.debug('user_Register slots={}'.format(intent_request['currentIntent']['slots']))
+
+    name = try_ex(lambda: intent_request['currentIntent']['slots']['Name'])
+    email = try_ex(lambda: intent_request['currentIntent']['slots']['Email'])
+    user_id = try_ex(lambda: userName)
+
+    if intent_request['sessionAttributes']:
+        session_attributes = intent_request['sessionAttributes']
+    else:
+        session_attributes = {}
+
+    # Load workout history and track the current workout.
+    overview = json.dumps({
+        'RequestType': 'User Register',
+        'UserId': user_id,
+        'Name': name
+    })
+    logger.debug('user_Register overview={}'.format(overview))
+    logger.debug('user_Register session_attributes={}'.format(session_attributes))
+    logger.debug('user_Register sessionAttributes={}'.format(intent_request['sessionAttributes']))
+    session_attributes['UserRegister'] = overview
+
+    if intent_request['invocationSource'] == 'DialogCodeHook':
+        # Validate any slots which have been specified.  If any are invalid, re-elicit for their value
+        validation_result = validate_user_id(intent_request['currentIntent']['slots'])
+        if not validation_result['isValid']:
+            slots = intent_request['currentIntent']['slots']
+            slots[validation_result['violatedSlot']] = None
+
+            return elicit_slot(
+                session_attributes,
+                intent_request['currentIntent']['name'],
+                slots,
+                validation_result['violatedSlot'],
+                validation_result['message']
+            )
+        # Otherwise, let native DM rules determine how to elicit for slots and prompt for confirmation.  Pass price
+        # back in sessionAttributes once it can be calculated; otherwise clear any setting from sessionAttributes.
+        if name and email and user_id:
+            # Save all data into the DynamoDB
+            entry_result = generate_checkin_log(exercise, checkin_date, mood, user_id)
+            session_attributes['currentCheckinStatus'] = entry_result['ResponseMetadata']['HTTPStatusCode']
+        else:
+            try_ex(lambda: session_attributes.pop('currentCheckinStatus'))
+
+        session_attributes['currentWorkout'] = overview
+        return delegate(session_attributes, intent_request['currentIntent']['slots'])
+
+    # Booking the hotel.  In a real application, this would likely involve a call to a backend service.
+    logger.debug('workoutCheckin under={}'.format(overview))
+
+    try_ex(lambda: session_attributes.pop('currentCheckinStatus'))
+    try_ex(lambda: session_attributes.pop('currentWorkout'))
+    session_attributes['lastConfirmedCheckin'] = overview
+
+    return close(
+        session_attributes,
+        'Fulfilled',
+        {
+            'contentType': 'PlainText',
+            'content': 'Thanks, I have recorded your workout checkin.'
+        }
+    )
+
 # --- Intents ---
 
 
@@ -284,8 +358,8 @@ def dispatch(intent_request):
     if intent_name == 'WorkoutCheckIn':
         return workout_CheckIn(intent_request, userName)
     ##this needs to be modified to remove the example of BookCar
-    elif intent_name == 'BookCar':
-        return book_car(intent_request)
+    elif intent_name == 'UserRegister':
+        return user_Register(intent_request, userName)
 
     raise Exception('Intent with name ' + intent_name + ' not supported')
 
