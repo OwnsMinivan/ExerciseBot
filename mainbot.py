@@ -8,9 +8,10 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 
 dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('Workout_Checkin_DDB')
+dynamodb_users = boto3.resource('dynamodb')
 
-users_table = dynamodb.Table('Workout_Users')
+table = dynamodb.Table('Workout_Checkin_DDB')
+users_table = dynamodb_users.Table('Workout_Users')
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -125,10 +126,14 @@ def generate_checkin_log(exercise, checkin_date, mood, user_id):
     )
     return response
 
-def validate_user_id(user_id):
+def validate_user_id(slots):
     """
     check User DB to see if current user_id is already listed.  If not, prompt user to fill it out.
     """
+
+    user_id = try_ex(lambda: slots['Name'])
+    email = try_ex(lambda: slots['EmailAddress'])
+
     response = users_table.query(
         KeyConditionExpression=Key('UserId').eq(user_id)
     )
@@ -347,12 +352,6 @@ def dispatch(intent_request):
     logger.debug('dispatch userId={}, intentName={}'.format(intent_request['userId'], intent_request['currentIntent']['name']))
 
     intent_name = intent_request['currentIntent']['name']
-
-    user_id_validation_result = validate_user_id(intent_request['userId'])
-    if user_id_validation_result is False:
-        userName = 'Unknown'
-    else:
-        userName = user_id_validation_result
 
     # Dispatch to your bot's intent handlers
     if intent_name == 'WorkoutCheckIn':
