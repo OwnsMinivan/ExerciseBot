@@ -357,6 +357,7 @@ def dispatch(intent_request):
     if intent_name == 'WorkoutCheckIn':
         return workout_CheckIn(intent_request, userName)
     ##this needs to be modified to remove the example of BookCar
+    #this should work but it isn't. 
     elif intent_name == 'UserRegister':
         return user_Register(intent_request, userName)
 
