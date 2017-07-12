@@ -90,6 +90,27 @@ def isvalid_mood(mood):
     mood_types = ['hard', 'easy', 'the worst', 'the best']
     return mood.lower() in mood_types
 
+def validate_email(email):
+    try:
+        if email:
+            if '@' in email:
+                return True
+    except ValueError:
+        return False
+
+def isvalid_user_id(user_id):
+    #thought here is to check the DB to see if we have the user_id.  if we do, return the name. if we don't, save the user_id.
+    response = users_table.query(
+        KeyConditionExpression=Key('UserId').eq(user_id)
+    )
+
+    for i in response['Items']:
+        try:
+            name = i['Name']
+            return name
+        except ValueError:
+            return False
+
 def safe_int(n):
     """
     Safely convert n value to int.
@@ -130,19 +151,17 @@ def validate_user_id(slots):
     check User DB to see if current user_id is already listed.  If not, prompt user to fill it out.
     """
 
-    user_id = try_ex(lambda: slots['Name'])
-    email = try_ex(lambda: slots['EmailAddress'])
+    name = try_ex(lambda: slots['Name'])
+    email = try_ex(lambda: slots['Email'])
 
-    response = users_table.query(
-        KeyConditionExpression=Key('UserId').eq(user_id)
-    )
+    #user = isvalid_user_id(user_id)
 
-    for i in response['Items']:
-        try:
-            name = i['Name']
-            return name
-        except ValueError:
-            return False
+    if not validate_email(email):
+        return build_validation_result(False, 'Email', 'Can you please provide me a vaild email address for yourself?')
+
+    if not name: 
+        return build_validation_result(False, 'Name', 'I did not catch your full name, can you please give me your first and last name?')
+
 
 def gather_user_id(user_id):
     """
@@ -291,7 +310,8 @@ def user_Register(intent_request, userName):
     overview = json.dumps({
         'RequestType': 'User Register',
         'UserId': user_id,
-        'Name': name
+        'Name': name,
+        'Email': email
     })
     logger.debug('user_Register overview={}'.format(overview))
     logger.debug('user_Register session_attributes={}'.format(session_attributes))
