@@ -136,7 +136,7 @@ def generate_user_login_log(name, email, user_id):
     """
     Put the info into a DynamoDB
     """
-    response = table.put_item(
+    response = users_table.put_item(
         Item={
             'UserId': user_id,
             'Name': name,
