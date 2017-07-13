@@ -30,6 +30,14 @@ def elicit_slot(session_attributes, intent_name, slots, slot_to_elicit, message)
         }
     }
 
+def elicit_intent(message):
+    return {
+        "type": "ElicitIntent",
+        "message": {
+            "contentType": "PlainText or SSML",
+            "content": message
+        },
+}
 
 def confirm_intent(session_attributes, intent_name, slots, message):
     return {
@@ -166,6 +174,7 @@ def validate_user_id(slots):
 
     name = try_ex(lambda: slots['Name'])
     email = try_ex(lambda: slots['Email'])
+    user_id = try_ex(lambda: slots['UserId'])
 
     #user = isvalid_user_id(user_id)
 
@@ -193,8 +202,9 @@ def validate_workout(slots):
     exercise = try_ex(lambda: slots['WorkoutType'])
     checkin_date = try_ex(lambda: slots['Date'])
     mood = try_ex(lambda: slots['Mood'])
-    user_id = try_ex(lambda: slots['Name'])
+    name = try_ex(lambda: slots['Name'])
     email = try_ex(lambda: slots['EmailAddress'])
+    user_id = try_ex(lambda: slots['UserId'])
 
     if exercise and not isvalid_workout(exercise):
         return build_validation_result(
@@ -213,10 +223,8 @@ def validate_workout(slots):
     if mood and not isvalid_mood(mood):
         return build_validation_result(False, 'Mood', 'I did not recognize how that workout went for you.  Was it easy, hard or the worst?')
 
-    if user_id == 'Unknown':
-        return build_validation_result(False, 'Name', "I don't think I've talked to you before, can I get your first and last name please?")
-
-        return build_validation_result(False, 'EmailAddress', 'Can I also get your email address?')
+    #if not name:
+     #   return elicit_intent("I'm not sure I've seen you before, are you a new user?")
 
     return {'isValid': True}
 
