@@ -132,6 +132,19 @@ def try_ex(func):
     except KeyError:
         return None
 
+def generate_user_login_log(name, email, user_id):
+    """
+    Put the info into a DynamoDB
+    """
+    response = table.put_item(
+        Item={
+            'UserId': user_id,
+            'Name': name,
+            'Email': email
+        }
+    )
+    return response
+
 def generate_checkin_log(exercise, checkin_date, mood, user_id):
     """
     Put the info into a DynamoDB
@@ -336,19 +349,19 @@ def user_Register(intent_request, userName):
         # back in sessionAttributes once it can be calculated; otherwise clear any setting from sessionAttributes.
         if name and email and user_id:
             # Save all data into the DynamoDB
-            entry_result = generate_checkin_log(exercise, checkin_date, mood, user_id)
+            entry_result = generate_user_login_log(name, email, user_id)
             session_attributes['currentCheckinStatus'] = entry_result['ResponseMetadata']['HTTPStatusCode']
         else:
             try_ex(lambda: session_attributes.pop('currentCheckinStatus'))
 
-        session_attributes['currentWorkout'] = overview
+        session_attributes['UserRegister'] = overview
         return delegate(session_attributes, intent_request['currentIntent']['slots'])
 
     # Booking the hotel.  In a real application, this would likely involve a call to a backend service.
-    logger.debug('workoutCheckin under={}'.format(overview))
+    logger.debug('user_Register under={}'.format(overview))
 
     try_ex(lambda: session_attributes.pop('currentCheckinStatus'))
-    try_ex(lambda: session_attributes.pop('currentWorkout'))
+    try_ex(lambda: session_attributes.pop('UserRegister'))
     session_attributes['lastConfirmedCheckin'] = overview
 
     return close(
@@ -356,7 +369,7 @@ def user_Register(intent_request, userName):
         'Fulfilled',
         {
             'contentType': 'PlainText',
-            'content': 'Thanks, I have recorded your workout checkin.'
+            'content': 'Thanks, I have recorded your contact info.'
         }
     )
 
