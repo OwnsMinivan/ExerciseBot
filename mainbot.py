@@ -174,7 +174,8 @@ def validate_user_id(slots):
 
     if not name: 
         return build_validation_result(False, 'Name', 'I did not catch your full name, can you please give me your first and last name?')
-
+    
+    return {'isValid': True}
 
 def gather_user_id(user_id):
     """
@@ -384,6 +385,7 @@ def dispatch(intent_request):
     logger.debug('dispatch userId={}, intentName={}'.format(intent_request['userId'], intent_request['currentIntent']['name']))
 
     intent_name = intent_request['currentIntent']['name']
+    userName = intent_request['userId']
 
     # Dispatch to your bot's intent handlers
     if intent_name == 'WorkoutCheckIn':
