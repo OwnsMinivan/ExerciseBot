@@ -108,14 +108,20 @@ def validate_email(email):
 
 def isvalid_user_id(user_id):
     #thought here is to check the DB to see if we have the user_id.  if we do, return the name. if we don't, save the user_id.
-    response = users_table.query(
-        KeyConditionExpression=Key('UserId').eq(user_id)
-    )
+    
+    logger.debug('dispatch user_name={}'.format(user_id))
 
-    for i in response['Items']:
+    if user_id:
         try:
-            name = i['Name']
-            return name
+            response = users_table.query(
+                KeyConditionExpression=Key('UserId').eq(user_id)
+            )
+            for i in response['Items']:
+                try:
+                    name = i['Name']
+                    return name
+                except ValueError:
+                    return False
         except ValueError:
             return False
 
@@ -176,14 +182,20 @@ def validate_user_id(slots):
     email = try_ex(lambda: slots['Email'])
     user_id = try_ex(lambda: slots['UserId'])
 
-    #user = isvalid_user_id(user_id)
+    user_name = isvalid_user_id(user_id)
+ 
+
+    if not user_name:
+        return build_validation_result(False, 'Name', 'I did not catch your full name, can you please give me your first and last name?')
 
     if not validate_email(email):
         return build_validation_result(False, 'Email', 'Can you please provide me a vaild email address for yourself?')
 
     if not name: 
-        return build_validation_result(False, 'Name', 'I did not catch your full name, can you please give me your first and last name?')
-    
+        user_name = isvalid_user_id(user_id)
+        if not user_name:
+            return build_validation_result(False, 'Name', 'I did not catch your full name, can you please give me your first and last name?')
+        
     return {'isValid': True}
 
 def gather_user_id(user_id):
@@ -250,6 +262,22 @@ def workout_CheckIn(intent_request, userName):
         session_attributes = intent_request['sessionAttributes']
     else:
         session_attributes = {}
+
+    if not user_id: 
+        if session_attributes['lastConfirmedCheckin']:
+            user_id = session_attributes['lastConfirmedCheckin']['RequestType']['UserId']
+            try:
+                response = users_table.query(
+                    KeyConditionExpression=Key('UserId').eq(user_id)
+                )
+                for i in response['Items']:
+                    try:
+                        user_name = i['Name']
+                        intent_request['currentIntent']['slots']['Name'] = user_name
+                    except ValueError:
+                        return False
+            except ValueError:
+                return False
 
     # Load workout history and track the current workout.
     overview = json.dumps({
@@ -389,7 +417,7 @@ def dispatch(intent_request):
     """
     Called when the user specifies an intent for this bot.
     """
-    userName = ''
+    #userName = ''
     logger.debug('dispatch userId={}, intentName={}'.format(intent_request['userId'], intent_request['currentIntent']['name']))
 
     intent_name = intent_request['currentIntent']['name']
