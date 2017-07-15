@@ -235,8 +235,8 @@ def validate_workout(slots):
     if mood and not isvalid_mood(mood):
         return build_validation_result(False, 'Mood', 'I did not recognize how that workout went for you.  Was it easy, hard or the worst?')
 
-    #if not name:
-     #   return elicit_intent("I'm not sure I've seen you before, are you a new user?")
+    if not name:
+        return build_validation_result(False, 'Name', 'I did not recognize how that workout went for you.  Was it easy, hard or the worst?')
 
     return {'isValid': True}
 
@@ -257,12 +257,26 @@ def workout_CheckIn(intent_request, userName):
     checkin_date = try_ex(lambda: intent_request['currentIntent']['slots']['Date'])
     mood = try_ex(lambda: intent_request['currentIntent']['slots']['Mood'])
     user_id = try_ex(lambda: userName)
-    user_name = try_ex(lambda: intent_request['currentIntent']['slots']['Name']))
+    user_name = try_ex(lambda: intent_request['currentIntent']['slots']['Name'])
 
     if intent_request['sessionAttributes']:
         session_attributes = intent_request['sessionAttributes']
     else:
         session_attributes = {}
+
+    if not user_name: 
+        try:
+            response = users_table.query(
+                KeyConditionExpression=Key('UserId').eq(user_id)
+            )
+            for i in response['Items']:
+                try:
+                    user_name = i['Name']
+                    intent_request['currentIntent']['slots']['Name'] = user_name
+                except ValueError:
+                    return False
+        except ValueError:
+            return False
 
     if not user_id: 
         if session_attributes['lastConfirmedCheckin']:
