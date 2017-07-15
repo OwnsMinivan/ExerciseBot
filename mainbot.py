@@ -215,8 +215,8 @@ def validate_workout(slots):
     checkin_date = try_ex(lambda: slots['Date'])
     mood = try_ex(lambda: slots['Mood'])
     name = try_ex(lambda: slots['Name'])
-    email = try_ex(lambda: slots['EmailAddress'])
-    user_id = try_ex(lambda: slots['UserId'])
+    #email = try_ex(lambda: slots['EmailAddress'])
+    #user_id = try_ex(lambda: slots['UserId'])
 
     if exercise and not isvalid_workout(exercise):
         return build_validation_result(
@@ -264,6 +264,7 @@ def workout_CheckIn(intent_request, userName):
     else:
         session_attributes = {}
 
+    #Here we'll check to see if the user is already entered into the DB and be able to respond with a name. 
     if not user_name: 
         try:
             response = users_table.query(
@@ -277,7 +278,11 @@ def workout_CheckIn(intent_request, userName):
                     return False
         except ValueError:
             return False
-
+    
+    if user_name == None:
+        user_name = elicit_intent("Hey, I'm not sure I've talked to you before. Can you tell me if you're a new user or a returning user?")
+    
+    #This is to catch if the user has a second attempt. History.
     if not user_id: 
         if session_attributes['lastConfirmedCheckin']:
             user_id = session_attributes['lastConfirmedCheckin']['RequestType']['UserId']
