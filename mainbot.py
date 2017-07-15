@@ -222,12 +222,12 @@ def validate_workout(slots):
         return build_validation_result(
             False,
             'WorkoutType',
-            'I have never heard of {} as a valid workout.  Can you try a different workout?'.format(exercise)
+            'Hi {} have never heard of {} as a valid workout.  Can you try a different workout?'.format(name, exercise)
         )
 
     if checkin_date:
         if not isvalid_date(checkin_date):
-            return build_validation_result(False, 'Date', 'I did not understand your check in date.  When did you workout?')
+            return build_validation_result(False, 'Date', 'Hi {} did not understand your check in date.  When did you workout?'.format(name))
 
         if dateutil.parser.parse(checkin_date) > datetime.datetime.today():
             return build_validation_result(False, 'Date', 'Your check in date is in the future!  Nice try, can you try a different date?')
@@ -257,6 +257,7 @@ def workout_CheckIn(intent_request, userName):
     checkin_date = try_ex(lambda: intent_request['currentIntent']['slots']['Date'])
     mood = try_ex(lambda: intent_request['currentIntent']['slots']['Mood'])
     user_id = try_ex(lambda: userName)
+    user_name = try_ex(lambda: intent_request['currentIntent']['slots']['Name']))
 
     if intent_request['sessionAttributes']:
         session_attributes = intent_request['sessionAttributes']
@@ -285,7 +286,8 @@ def workout_CheckIn(intent_request, userName):
         'Exercise': exercise,
         'Mood': mood,
         'CheckInDate': checkin_date,
-        'UserId': user_id
+        'UserId': user_id,
+        'Name': user_name
     })
     logger.debug('workout_CheckIn overview={}'.format(overview))
     logger.debug('workout_CheckIn session_attributes={}'.format(session_attributes))
